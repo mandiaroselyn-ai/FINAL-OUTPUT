@@ -13,9 +13,6 @@ import holidayRoutes from './routes/holidayRoutes.js';
 
 dotenv.config();
 
-// Connect to MongoDB
-connectDB().catch(err => console.error('Failed to connect to MongoDB:', err));
-
 const app = express();
 
 // Middleware
@@ -26,6 +23,17 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Middleware to ensure MongoDB connection before each request
+app.use(async (req, res, next) => {
+  try {
+    await ensureMongoConnection();
+    next();
+  } catch (error) {
+    console.error('Database connection middleware error:', error);
+    next(); // Continue anyway, let the endpoint handle the error
+  }
+});
+
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/dtrlogs', dtrLogRoutes);
@@ -34,13 +42,31 @@ app.use('/api/travelorders', travelOrderRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/holidays', holidayRoutes);
 
+// Ensure MongoDB connection is initialized
+let dbConnectionPromise = null;
+const ensureMongoConnection = async () => {
+  if (dbConnectionPromise) return dbConnectionPromise;
+  dbConnectionPromise = connectDB();
+  return dbConnectionPromise;
+};
+
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString(),
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    await ensureMongoConnection();
+    res.json({
+      status: 'ok',
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // 404 fallback for API routes

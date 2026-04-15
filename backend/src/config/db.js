@@ -15,11 +15,13 @@ const connectDB = async () => {
   }
 
   if (!process.env.MONGO_URI) {
-    console.error('❌ MONGO_URI environment variable is not set');
-    return;
+    const error = new Error('MONGO_URI environment variable is not set');
+    console.error('❌', error.message);
+    throw error;
   }
 
   try {
+    console.log('🔄 Connecting to MongoDB...');
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
@@ -28,9 +30,10 @@ const connectDB = async () => {
       minPoolSize: 2,
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
     console.error(`❌ MongoDB connection failed: ${error.message}`);
-    // Do NOT call process.exit(1) on serverless — just log the error
+    throw error; // Re-throw so caller knows connection failed
   }
 };
 
