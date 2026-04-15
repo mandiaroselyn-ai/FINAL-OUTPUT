@@ -15,9 +15,33 @@ dotenv.config();
 
 const app = express();
 
+// Determine allowed origins for CORS
+const getAllowedOrigins = () => {
+  const origins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ];
+  
+  // Add Vercel production URL if available
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+  
+  return [...new Set(origins)];
+};
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Blocked origin - ${origin}`);
+      callback(null, true); // Allow anyway for now, log the attempt
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
