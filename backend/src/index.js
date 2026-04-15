@@ -14,7 +14,7 @@ import holidayRoutes from './routes/holidayRoutes.js';
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
+connectDB().catch(err => console.error('Failed to connect to MongoDB:', err));
 
 const app = express();
 
